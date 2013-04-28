@@ -94,6 +94,10 @@ class SimGUI_Frame(wx.Frame):
 
         # Let everyone know we're ready
         self.UDPSockTo.sendto("Hello!",self.addrTo)
+        
+        ###### ENV VIOLATION CHECK ######
+        self.env_violation = False
+        #################################
 
     def setMapImage(self, filename):
         # Load and display the map
@@ -157,6 +161,11 @@ class SimGUI_Frame(wx.Frame):
                     wx.CallAfter(self.appendLog, input + "\n", color="CYAN") 
             elif input.startswith("BG:"):
                 wx.CallAfter(self.setMapImage, input.split(":",1)[1])
+            elif input.startswith("Violation:"):
+                wx.CallAfter(self.appendLog, input.split(":",1)[1] + "\n", color="RED")
+                self.env_violation = True
+            elif input.startswith("ViolationSolved:"):
+                self.env_violation = False
             else:
                 if self.checkbox_statusLog_other.GetValue():
                     if input != "":
@@ -277,6 +286,9 @@ class SimGUI_Frame(wx.Frame):
                 if p_reg in subregs:
                     break
             text = re.sub(r'\b'+p_reg+r'\b', '%s (%s)' % (p_reg, rname), text)
+
+        if self.env_violation == True:
+            color = "RED"
 
         self.text_ctrl_sim_log.BeginTextColour(color)
         self.text_ctrl_sim_log.WriteText("["+time.strftime("%H:%M:%S")+"] "+text)

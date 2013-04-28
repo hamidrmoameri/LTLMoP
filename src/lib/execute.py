@@ -24,6 +24,16 @@ from numpy import *
 from handlers.motionControl.__is_inside import is_inside
 from socket import *
 
+###### ENV VIOLATION CHECK ######
+import copy
+import specCompiler
+
+lib_path = os.path.abspath('../src/LTLparser')
+if lib_path not in sys.path:
+    sys.path.append(lib_path)
+import LTLcheck
+
+#################################
 
 ####################
 # HELPER FUNCTIONS #
@@ -294,6 +304,16 @@ def main(argv):
         timer_func = time.clock
     else:
         timer_func = time.time
+        
+    ###### ENV VIOLATION CHECK ######
+    compiler = specCompiler.SpecCompiler(spec_file)
+    compiler._decompose()  # WHAT DOES IT DO? DECOMPOSE REGIONS?
+    compiler.proj = proj #conservative
+    #compiler.proj = copy.deepcopy(proj) #conservative
+    traceback, LTL2LineNo = compiler._writeLTLFile()
+    path_ltl =  os.path.join(proj.project_root,proj.getFilenamePrefix()+".ltl")  # path of ltl file to be passed to the function 
+    LTLViolationCheck = LTLcheck.LTL_Check(path_ltl,LTL2LineNo)
+    ################################# 
 
     while not show_gui or guiListenThread.isAlive():
         # Idle if we're not running
@@ -304,7 +324,10 @@ def main(argv):
             tic = timer_func()
     
             FSA.runIteration()
-    
+              
+            # Check for environment violation
+            LTLViolationCheck.checkViolation(FSA.current_state,FSA.sensor_state)
+                
             toc = timer_func()
     
             # TODO: Possibly implement max rate-limiting?

@@ -56,7 +56,6 @@ class Automaton:
         self.proj = proj
 
         self.states = []    # A collection of state objects belonging to the automaton
-        self.stateNameToState = {}
 
         self.regions = proj.rfi.regions # a list of region objects
         self.regionMapping = proj.regionMapping # mapping between original regions and decomposed regions
@@ -81,11 +80,15 @@ class Automaton:
         self.current_outputs = {}
         self.arrived = False
 
+        ###### ENV VIOLATION CHECK ######
+        self.LTL2LineNo      = {}
+        self.violation_check = False
+        #################################
+
     def stateWithName(self, name):
         """
         Find the state with the given name
         """
-
         try:
             return self.stateNameToState[name]
         except KeyError:
@@ -313,7 +316,7 @@ class Automaton:
                 if state.outputs[key] == '1':
                     FILE.write( key + '\\n')
                 else:
-                    FILE.write( '¬' + key + '\\n')
+                    FILE.write( '<AC>' + key + '\\n')
             #FILE.write( "("+state.rank + ')\\n ')
             FILE.write('\" ];\n')
 
@@ -326,7 +329,7 @@ class Automaton:
                     if nextState.inputs[key] == '1':
                         FILE.write( key + '\\n')
                     else:
-                        FILE.write( '¬' + key + '\\n')
+                        FILE.write( '<AC>' + key + '\\n')
                 FILE.write('\" ];\n')
 
         FILE.write('} \n')
@@ -362,9 +365,9 @@ class Automaton:
 
         # Take a snapshot of our current sensor readings
         # This is so we don't risk the readings changing in the middle of our state search
-        sensor_state = {}
+        self.sensor_state = {}
         for sensor in self.sensors:
-            sensor_state[sensor] = eval(self.sensor_handler[sensor], {'self':self,'initial':False})
+            self.sensor_state[sensor] = eval(self.sensor_handler[sensor], {'self':self,'initial':False})
 
         for state in state_list:
             okay = True
@@ -372,7 +375,7 @@ class Automaton:
             if initial:
                 # First see if we can be in the state given our current region
                 if self.regionFromState(state) != self.current_region: continue
-                
+
                 # Start only with Rank 0 states
                 #if int(state.rank) != 0: continue
 
@@ -389,7 +392,7 @@ class Automaton:
 
             # Now check whether our current sensor values match those of the state
             for key, value in state.inputs.iteritems():
-                if int(sensor_state[key]) != int(value):
+                if int(self.sensor_state[key]) != int(value):
                     okay = False
                     break
 
@@ -448,9 +451,17 @@ class Automaton:
         # Make sure we have somewhere to go
         if len(next_states) == 0:
             # Well darn!
-            print "(FSA) ERROR: Could not find a suitable state to transition to!"
+
+            ###### ENV VIOLATION CHECK ######
+            if self.violation_check == False:
+                print "(FSA) ERROR: Could not find a suitable state to transition to!"
+            self.violation_check = True
+            
             return
 
+        else:
+            self.violation_check = False
+            #################################
 
         # See if we're beginning a new transition
         if next_states != self.last_next_states:
