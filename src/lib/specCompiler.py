@@ -99,7 +99,7 @@ class SpecCompiler(object):
 
         adjData = self.parser.proj.rfi.transitions
 
-        createLTLfile(self.proj.getFilenamePrefix(), sensorList, robotPropList, adjData, spec)
+        #createLTLfile(self.proj.getFilenamePrefix(), sensorList, robotPropList, adjData, spec)
 
         return traceback, LTL2LineNo
         
@@ -239,7 +239,7 @@ class SpecCompiler(object):
 
         return (realizable, nonTrivial, to_highlight, output)
 
-    def _synthesize(self, with_safety_aut=False):
+    def _synthesize(self, with_safety_aut=False, just_realizability=False):
         cmd = self._getGROneCommand("GROneMain")
         if cmd is None:
             return (False, False, "")
@@ -250,6 +250,14 @@ class SpecCompiler(object):
         if self.proj.compile_options["fastslow"]:
             cmd.append("--fastslow")
 
+    
+        # Added options from slugs to just check for realizability without generating automaton
+        if just_realizability == True:
+            cmd.append("--onlyRealizability")
+        
+        # consider all possible starting states
+        cmd.append("--sysInitRoboticsSemantics")
+        
         subp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=False)
         
         realizable = False
