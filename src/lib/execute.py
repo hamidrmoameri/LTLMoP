@@ -395,12 +395,14 @@ def main(argv):
                     sys.stdout = redir
                     
                     if realizable:
-                        print "please put in some environment liveness assumptions"
-                        time.sleep(20)
+                        print "Please put in some environment liveness assumptions"
+                        time.sleep(5)
                           
                     else:
                         print "unknown error ??? lol"  
                     LTLViolationCheck.append_liveness_guarantees()
+                    print "Now we will exit the execution"
+                    sys.exit()
                 #time.sleep(10)
             
             #################################
