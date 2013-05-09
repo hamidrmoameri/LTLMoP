@@ -331,12 +331,15 @@ def main(argv):
             # Check for environment violation
             env_assumption_hold = LTLViolationCheck.checkViolation(FSA.current_state,FSA.sensor_state)
             
+            # change the env_assumption_hold to int again (messed up by Python? )
+            env_assumption_hold = int(env_assumption_hold)
             
             # temporarily added to account for [](FALSE)
             #LTLViolationCheck.modify_LTL_file()
             
             # Modify the ltl file based on the enviornment change
             if env_assumption_hold == False:
+                #print>>sys.__stdout__, "assumption is evaluated as False"
                 LTLViolationCheck.modify_LTL_file()
                 realizable = compiler._synthesize()[0]  # TRUE for realizable, FALSE for unrealizable
                 
@@ -415,7 +418,12 @@ def main(argv):
                     sys.exit()
                 #time.sleep(10)
             
+            else:
+                if env_assumption_hold == False:
+                    print >>sys.__stdout__,"Value should be True: " + str(env_assumption_hold)
+            #    print >>sys.__stdout__,"env_assumption_hold equals False: " + str(env_assumption_hold == False) +" should say False."     
             #################################
+            
                 
             toc = timer_func()
     
