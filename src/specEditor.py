@@ -23,6 +23,13 @@ from specCompiler import SpecCompiler
 from copy import deepcopy
 import threading, time
 
+###### ENV VIOLATION CHECK ######
+lib_path = os.path.abspath('../src/LTLparser')
+if lib_path not in sys.path:
+    sys.path.append(lib_path)
+import LTLcheck
+#################################
+
 ######################### WARNING! ############################
 #         DO NOT EDIT GUI CODE BY HAND.  USE WXGLADE.         #
 #   The .wxg file is located in the etc/wxglade/ directory.   #
@@ -892,14 +899,6 @@ class SpecEditorFrame(wx.Frame):
             self.appendLog("ERROR: Aborting compilation due to syntax error.\n", "RED")
             return
 
-        # Load in LTL file to the LTL tab
-        if os.path.exists(self.proj.getFilenamePrefix()+".ltl"):
-            f = open(self.proj.getFilenamePrefix()+".ltl","r")
-            ltl = "".join(f.readlines())
-            f.close()
-            self.text_ctrl_LTL.SetValue(ltl)
-
-
         self.appendLog("Creating automaton...\n", "BLUE")
 
         realizable, realizableFS, output = compiler._synthesize(with_safety_aut)
@@ -920,7 +919,28 @@ class SpecEditorFrame(wx.Frame):
                 self.appendLog("Automaton successfully synthesized for instantaneous actions.\n", "GREEN")
             else:
                 self.appendLog("ERROR: Specification was unsynthesizable (unrealizable/unsatisfiable) for instantaneous actions.\n", "RED")
+                
+                ############# ENV Assumption Learning ###################
+                if not realizable:
+                    self.appendLog("\tNow we are changing the environment safety assumptions from [](TRUE) to [](FALSE).\n","BLUE")
+                    path_ltl =  os.path.join(self.proj.project_root,self.proj.getFilenamePrefix()+".ltl")  # path of ltl file to be passed to the function 
+                    LTLViolationCheck = LTLcheck.LTL_Check(path_ltl,self.traceback[1])
+                    LTLViolationCheck.modify_LTL_file()
+                    realizable, realizableFS, output = compiler._synthesize(with_safety_aut)
+                
+                if realizable:
+                    self.appendLog("\tAutomaton successfully synthesized for instantaneous actions.\n", "GREEN")
+                else:
+                    self.appendLog("\tERROR: Specification was unsynthesizable (unrealizable/unsatisfiable) for instantaneous actions.\n", "RED")
+                #########################################################
 
+        # Load in LTL file to the LTL tab
+        if os.path.exists(self.proj.getFilenamePrefix()+".ltl"):
+            f = open(self.proj.getFilenamePrefix()+".ltl","r")
+            ltl = "".join(f.readlines())
+            f.close()
+            self.text_ctrl_LTL.SetValue(ltl)           
+            
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
 
