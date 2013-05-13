@@ -310,9 +310,11 @@ def main(argv):
     compiler._decompose()  # WHAT DOES IT DO? DECOMPOSE REGIONS?
     compiler.proj = proj #conservative
     #compiler.proj = copy.deepcopy(proj) #conservative
-    traceback, LTL2LineNo = compiler._writeLTLFile()
+    traceback, LTL2LineNo = compiler._writeLTLFile()  # don't want to call it in some sense. obtain from specEditor?
     path_ltl =  os.path.join(proj.project_root,proj.getFilenamePrefix()+".ltl")  # path of ltl file to be passed to the function 
     LTLViolationCheck = LTLcheck.LTL_Check(path_ltl,LTL2LineNo)
+    prev_cur_state = FSA.getCurrentState()
+    prev_sensor_state = FSA.getSensorState() 
     ################################# 
 
     while not show_gui or guiListenThread.isAlive():
@@ -329,7 +331,7 @@ def main(argv):
             
             
             # Check for environment violation
-            env_assumption_hold = LTLViolationCheck.checkViolation(FSA.current_state,FSA.sensor_state)
+            env_assumption_hold = LTLViolationCheck.checkViolation(FSA.getCurrentState(),FSA.getSensorState())
             
             # change the env_assumption_hold to int again (messed up by Python? )
             env_assumption_hold = int(env_assumption_hold)
@@ -347,7 +349,7 @@ def main(argv):
                 sys.stdout = redir
                 
                 #print "INITIAL:modify_stage: " + str(LTLViolationCheck.modify_stage) + "-realizable: " + str(realizable)
-                #print realizable , LTLViolationCheck.modify_stage
+
                 if not realizable:
                     while LTLViolationCheck.modify_stage < 3 and not realizable:
                         LTLViolationCheck.modify_stage += 1 
@@ -358,13 +360,12 @@ def main(argv):
                         #TODO: figure out what's the problem with printing to terminal after resynthesize * the line here fix the problem by redirecting the printings again
                         sys.stdout = redir
                 
-                print "STAGE: " + str(LTLViolationCheck.modify_stage) + " APPENDED: " + str(LTLViolationCheck.last_added_ltl) + ")" 
-                #print "FINAL:modify_stage: " + str(LTLViolationCheck.modify_stage) + "-realizable: " + str(realizable)
+                print "STAGE: " + str(LTLViolationCheck.modify_stage) 
                 print "FINAL:-realizable: " + str(realizable)
                 # reload aut file if the new ltl is realizable        
                 if realizable:
                     print "ViolationSolved:"
-                    LTLViolationCheck.last_added_ltl = ""
+                    LTLViolationCheck.sameState = False
                     #######################
                     # Load automaton file #
                     #######################
@@ -383,10 +384,9 @@ def main(argv):
                         #print key, value
                     cur_region_no = FSA.regionFromState(LTLViolationCheck.current_state)
                     
-                    print "cur_region_no:" + str(cur_region_no)
+                    #print "cur_region_no:" + str(cur_region_no)
                     #init_state = FSA.chooseInitialState(init_region, init_outputs)
                     init_state = FSA.chooseInitialState(cur_region_no, cur_outputs)
-                    #print "cur_region_no: " + str(cur_region_no)   # by Catherine
                     #print "cur_outputs: " + str(cur_outputs)  # by Catherine
                     
                     if init_state is None:
@@ -418,13 +418,23 @@ def main(argv):
                     sys.exit()
                 #time.sleep(10)
             
-            else:
+            else:    
+                #if prev_cur_state != FSA.current_state or prev_sensor_state != FSA.sensor_state:
+                    #print "The SENSOR state has been changed."
+                    #print "Before:" + LTLViolationCheck.env_safety_assumptions_stage["3"]
+                LTLViolationCheck.append_state_to_LTL(FSA.getCurrentState(),FSA.getSensorState())
+                #LTLViolationCheck.modify_LTL_file()
                 if env_assumption_hold == False:
                     print >>sys.__stdout__,"Value should be True: " + str(env_assumption_hold)
             #    print >>sys.__stdout__,"env_assumption_hold equals False: " + str(env_assumption_hold == False) +" should say False."     
+                #if prev_cur_state != FSA.current_state or prev_sensor_state != FSA.sensor_state:
+                #    print "After: " + LTLViolationCheck.env_safety_assumptions_stage["3"]
+                    
+            prev_cur_state = FSA.getCurrentState()
+            prev_sensor_state = FSA.getSensorState() 
             #################################
             
-                
+              
             toc = timer_func()
     
             # TODO: Possibly implement max rate-limiting?
@@ -442,6 +452,7 @@ def main(argv):
                 last_gui_update_time = time.time()
                 
     print "execute.py quitting..."
+
 
 class RedirectText:
     """
